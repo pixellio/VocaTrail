@@ -1,6 +1,8 @@
 import { Card } from '@/types';
 import Database from 'better-sqlite3';
 import { Pool, PoolClient } from 'pg';
+import * as fs from 'fs';
+import * as path from 'path';
 
 export interface DatabaseAdapter {
   initialize(): Promise<void>;
@@ -25,8 +27,6 @@ class SQLiteAdapter implements DatabaseAdapter {
     if (this.db) return;
 
     // Ensure data directory exists
-    const fs = require('fs');
-    const path = require('path');
     const dataDir = path.dirname(this.dbPath);
     if (!fs.existsSync(dataDir)) {
       fs.mkdirSync(dataDir, { recursive: true });
@@ -202,7 +202,7 @@ class PostgreSQLAdapter implements DatabaseAdapter {
     if (!this.client) throw new Error('Database not initialized');
     
     const result = await this.client.query('DELETE FROM cards WHERE id = $1', [id]);
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   async getCardById(id: number): Promise<Card | null> {

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit3, Trash2, Save, X, Volume2, Settings, Grid, List } from 'lucide-react';
+import { Plus, Edit3, Trash2, X, Volume2, Grid, List } from 'lucide-react';
 import { useDatabase } from '@/hooks/useDatabase';
 import { Card } from '@/types';
 
@@ -51,7 +51,7 @@ const AACApp = () => {
     };
 
     loadCards();
-  }, [isInitialized]);
+  }, [isInitialized, storageService]);
 
   const filteredCards = selectedCategory === 'All' 
     ? cards 

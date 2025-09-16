@@ -20,12 +20,22 @@ export class DataMigrator {
   }
 
   private createAdapter(type: 'sqlite' | 'postgresql', path?: string, url?: string): DatabaseAdapter {
+    // For migration purposes, we'll use the factory function
+    // This is a simplified approach that works with the current architecture
     if (type === 'sqlite') {
-      const SQLiteAdapter = require('./database').SQLiteAdapter;
-      return new SQLiteAdapter(path);
+      // Create a SQLite adapter by temporarily setting the environment
+      const originalUrl = process.env.DATABASE_URL;
+      delete process.env.DATABASE_URL;
+      const adapter = createDatabaseAdapter();
+      if (originalUrl) process.env.DATABASE_URL = originalUrl;
+      return adapter;
     } else {
-      const PostgreSQLAdapter = require('./database').PostgreSQLAdapter;
-      return new PostgreSQLAdapter(url!);
+      // Create a PostgreSQL adapter
+      const originalUrl = process.env.DATABASE_URL;
+      process.env.DATABASE_URL = url!;
+      const adapter = createDatabaseAdapter();
+      if (originalUrl) process.env.DATABASE_URL = originalUrl;
+      return adapter;
     }
   }
 
@@ -52,6 +62,8 @@ export class DataMigrator {
         try {
           // Remove id, created_at, updated_at to let target DB generate new ones
           const { id, created_at, updated_at, ...cardData } = card;
+          // Log the original values for debugging if needed
+          console.log(`Migrating card: ${id} (${created_at} -> ${updated_at})`);
           await this.targetAdapter.addCard(cardData);
           migratedCount++;
         } catch (error) {
@@ -91,6 +103,8 @@ export class DataMigrator {
       for (const card of cards) {
         try {
           const { id, created_at, updated_at, ...cardData } = card;
+          // Log the original values for debugging if needed
+          console.log(`Importing card: ${id} (${created_at} -> ${updated_at})`);
           await this.targetAdapter.addCard(cardData);
           importedCount++;
         } catch (error) {
@@ -146,6 +160,9 @@ export async function migrateFromPostgreSQLToSQLite(
 }
 
 export async function exportDataToJson(databaseUrl?: string): Promise<Card[]> {
+  if (databaseUrl) {
+    console.log(`Exporting data from: ${databaseUrl}`);
+  }
   const adapter = createDatabaseAdapter();
   await adapter.initialize();
   const cards = await adapter.getAllCards();
@@ -154,6 +171,9 @@ export async function exportDataToJson(databaseUrl?: string): Promise<Card[]> {
 }
 
 export async function importDataFromJson(cards: Card[], databaseUrl?: string): Promise<{ success: boolean; message: string; importedCount: number }> {
+  if (databaseUrl) {
+    console.log(`Importing data to: ${databaseUrl}`);
+  }
   const adapter = createDatabaseAdapter();
   await adapter.initialize();
   
@@ -161,6 +181,8 @@ export async function importDataFromJson(cards: Card[], databaseUrl?: string): P
   for (const card of cards) {
     try {
       const { id, created_at, updated_at, ...cardData } = card;
+      // Log the original values for debugging if needed
+      console.log(`Importing card: ${id} (${created_at} -> ${updated_at})`);
       await adapter.addCard(cardData);
       importedCount++;
     } catch (error) {

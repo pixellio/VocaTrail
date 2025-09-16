@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { databaseAdapter } from '@/lib/database';
-import { Card } from '@/types';
 
 // GET /api/cards - Get all cards
 export async function GET() {
@@ -9,6 +8,7 @@ export async function GET() {
     const cards = await databaseAdapter.getAllCards();
     return NextResponse.json({ success: true, data: cards });
   } catch (error) {
+    console.error('Failed to fetch cards:', error);
     return NextResponse.json(
       { success: false, error: 'Failed to fetch cards' },
       { status: 500 }
@@ -34,6 +34,7 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json({ success: true, data: newCard }, { status: 201 });
   } catch (error) {
+    console.error('Failed to create card:', error);
     return NextResponse.json(
       { success: false, error: 'Failed to create card' },
       { status: 500 }

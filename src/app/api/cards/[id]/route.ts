@@ -4,10 +4,11 @@ import { databaseAdapter } from '@/lib/database';
 // GET /api/cards/[id] - Get a specific card
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const id = parseInt(params.id);
+    const { id: idParam } = await params;
+    const id = parseInt(idParam);
     if (isNaN(id)) {
       return NextResponse.json(
         { success: false, error: 'Invalid card ID' },
@@ -27,6 +28,7 @@ export async function GET(
 
     return NextResponse.json({ success: true, data: card });
   } catch (error) {
+    console.error('Failed to fetch card:', error);
     return NextResponse.json(
       { success: false, error: 'Failed to fetch card' },
       { status: 500 }
@@ -37,10 +39,11 @@ export async function GET(
 // PUT /api/cards/[id] - Update a card
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const id = parseInt(params.id);
+    const { id: idParam } = await params;
+    const id = parseInt(idParam);
     if (isNaN(id)) {
       return NextResponse.json(
         { success: false, error: 'Invalid card ID' },
@@ -63,6 +66,7 @@ export async function PUT(
 
     return NextResponse.json({ success: true, data: updatedCard });
   } catch (error) {
+    console.error('Failed to update card:', error);
     return NextResponse.json(
       { success: false, error: 'Failed to update card' },
       { status: 500 }
@@ -73,10 +77,11 @@ export async function PUT(
 // DELETE /api/cards/[id] - Delete a card
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const id = parseInt(params.id);
+    const { id: idParam } = await params;
+    const id = parseInt(idParam);
     if (isNaN(id)) {
       return NextResponse.json(
         { success: false, error: 'Invalid card ID' },
@@ -96,6 +101,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true, message: 'Card deleted successfully' });
   } catch (error) {
+    console.error('Failed to delete card:', error);
     return NextResponse.json(
       { success: false, error: 'Failed to delete card' },
       { status: 500 }
