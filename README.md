@@ -97,32 +97,34 @@ npm run dev
 
 ## Database Configuration
 
-VocaTrail uses **SQL.js** as the default database, which provides a WASM-based SQLite implementation that runs entirely in the browser. This means:
+VocaTrail supports multiple database backends with automatic fallback:
 
-- **No server required** - Data is stored locally in the browser
-- **Offline functionality** - Works without internet connection
-- **Persistent storage** - Data persists between browser sessions
-- **SQL compatibility** - Full SQLite feature support
+### Local Development
+- **SQLite** - File-based database (`./data/vocatrail.db`)
+- **Persistent storage** - Data saved to disk
+- **No configuration required**
+
+### Vercel Production
+- **In-memory database** - Data resets between function calls
+- **Default cards** - Always starts with pre-built communication cards
+- **No configuration required**
+
+### PostgreSQL Production (Recommended)
+- **Persistent storage** - Data permanently saved
+- **Set environment variable**: `DATABASE_URL=postgres://user:pass@host:port/db`
+- **Migration support** - Easy data migration from SQLite
 
 ### Environment Variables
 
-You can configure a different database by setting environment variables:
-
 ```bash
-# Use PostgreSQL
-DATABASE_URL=postgresql://user:password@localhost:5432/vocatrail
+# Use PostgreSQL (recommended for production)
+DATABASE_URL=postgres://username:password@host:port/database
 
-# Use MySQL
-DATABASE_URL=mysql://user:password@localhost:3306/vocatrail
-
-# Use SQLite file
-DATABASE_URL=sqlite://./data/vocatrail.db
-
-# Force SQL.js usage (default)
-USE_SQLJS_DEFAULT=true
+# Vercel automatically uses in-memory database
+# No additional configuration needed
 ```
 
-If no `DATABASE_URL` is provided, the app automatically uses SQL.js as the default database.
+See [DATABASE_DEPLOYMENT.md](./DATABASE_DEPLOYMENT.md) for detailed deployment information.
 
 ## Usage
 

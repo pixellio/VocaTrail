@@ -26,10 +26,13 @@ class SQLiteAdapter implements DatabaseAdapter {
   async initialize(): Promise<void> {
     if (this.db) return;
 
-    // Ensure data directory exists
-    const dataDir = path.dirname(this.dbPath);
-    if (!fs.existsSync(dataDir)) {
-      fs.mkdirSync(dataDir, { recursive: true });
+    // For in-memory database, skip directory creation
+    if (this.dbPath !== ':memory:') {
+      // Ensure data directory exists
+      const dataDir = path.dirname(this.dbPath);
+      if (!fs.existsSync(dataDir)) {
+        fs.mkdirSync(dataDir, { recursive: true });
+      }
     }
 
     this.db = new Database(this.dbPath);
@@ -224,21 +227,113 @@ class PostgreSQLAdapter implements DatabaseAdapter {
   }
 }
 
-// Database Factory
+// In-Memory Database Implementation for Vercel
+class InMemoryAdapter implements DatabaseAdapter {
+  private cards: Card[] = [];
+  private nextId = 1;
+
+  async initialize(): Promise<void> {
+    // Initialize with default cards if empty
+    if (this.cards.length === 0) {
+      const defaultCards = [
+        { text: 'Hello', symbol: '👋', category: 'Greetings', color: '#FFE4E1' },
+        { text: 'Please', symbol: '🙏', category: 'Politeness', color: '#E1F5FE' },
+        { text: 'Thank you', symbol: '❤️', category: 'Politeness', color: '#E8F5E8' },
+        { text: 'Water', symbol: '💧', category: 'Needs', color: '#E3F2FD' },
+        { text: 'Food', symbol: '🍎', category: 'Needs', color: '#FFF3E0' },
+        { text: 'Help', symbol: '🆘', category: 'Emergency', color: '#FFEBEE' },
+        { text: 'Yes', symbol: '✅', category: 'Responses', color: '#E8F5E8' },
+        { text: 'No', symbol: '❌', category: 'Responses', color: '#FFEBEE' },
+      ];
+
+      for (const card of defaultCards) {
+        this.cards.push({
+          ...card,
+          id: this.nextId++,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        });
+      }
+    }
+  }
+
+  async getAllCards(): Promise<Card[]> {
+    return [...this.cards];
+  }
+
+  async addCard(card: Omit<Card, 'id' | 'created_at' | 'updated_at'>): Promise<Card> {
+    const newCard: Card = {
+      ...card,
+      id: this.nextId++,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    this.cards.push(newCard);
+    return newCard;
+  }
+
+  async updateCard(id: number, updates: Partial<Omit<Card, 'id' | 'created_at' | 'updated_at'>>): Promise<Card | null> {
+    const index = this.cards.findIndex(card => card.id === id);
+    if (index === -1) return null;
+
+    this.cards[index] = {
+      ...this.cards[index],
+      ...updates,
+      updated_at: new Date().toISOString()
+    };
+    return this.cards[index];
+  }
+
+  async deleteCard(id: number): Promise<boolean> {
+    const index = this.cards.findIndex(card => card.id === id);
+    if (index === -1) return false;
+
+    this.cards.splice(index, 1);
+    return true;
+  }
+
+  async getCardById(id: number): Promise<Card | null> {
+    return this.cards.find(card => card.id === id) || null;
+  }
+
+  close(): void {
+    // No-op for in-memory database
+  }
+}
+
+// Database Factory with fallback
 export function createDatabaseAdapter(): DatabaseAdapter {
   const databaseUrl = process.env.DATABASE_URL;
   
   if (databaseUrl && databaseUrl.startsWith('postgres://')) {
     console.log('Using PostgreSQL database');
     return new PostgreSQLAdapter(databaseUrl);
+  } else if (process.env.VERCEL) {
+    // On Vercel, use in-memory database
+    console.log('Using in-memory database (Vercel)');
+    return new InMemoryAdapter();
   } else {
     console.log('Using SQLite database (default)');
-    return new SQLiteAdapter();
+    try {
+      return new SQLiteAdapter();
+    } catch (error) {
+      console.warn('SQLite database failed to initialize, falling back to in-memory database:', error);
+      return new InMemoryAdapter();
+    }
   }
 }
 
-// Singleton instance
-export const databaseAdapter = createDatabaseAdapter();
+// Singleton instance with error handling
+let databaseAdapter: DatabaseAdapter;
+
+try {
+  databaseAdapter = createDatabaseAdapter();
+} catch (error) {
+  console.warn('Failed to create database adapter, using in-memory fallback:', error);
+  databaseAdapter = new InMemoryAdapter();
+}
+
+export { databaseAdapter };
 
 // Initialize default cards
 export async function initializeDefaultCards(): Promise<void> {
