@@ -213,6 +213,13 @@ export async function initializeDefaultCards(): Promise<void> {
       { text: 'Help', symbol: '🆘', category: 'Emergency', color: '#FFEBEE' },
       { text: 'Yes', symbol: '✅', category: 'Responses', color: '#E8F5E8' },
       { text: 'No', symbol: '❌', category: 'Responses', color: '#FFEBEE' },
+      // Questions (WH-)
+      { text: 'Who', symbol: '👤', category: 'Question', color: '#E3F2FD' },
+      { text: 'What', symbol: '❓', category: 'Question', color: '#FFF3E0' },
+      { text: 'Where', symbol: '📍', category: 'Question', color: '#E8F5E8' },
+      { text: 'When', symbol: '🕙', category: 'Question', color: '#F3E5F5' },
+      { text: 'Why', symbol: '🤷', category: 'Question', color: '#FFEBEE' },
+      { text: 'How', symbol: '🔧', category: 'Question', color: '#E0F2F1' },
     ];
 
     for (const card of defaultCards) {

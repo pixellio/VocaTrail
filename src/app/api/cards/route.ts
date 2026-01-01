@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { databaseAdapter } from '@/lib/database';
+import { databaseAdapter, initializeDefaultCards } from '@/lib/database';
 
 // GET /api/cards - Get all cards
 export async function GET() {
   try {
     await databaseAdapter.initialize();
-    const cards = await databaseAdapter.getAllCards();
+    let cards = await databaseAdapter.getAllCards();
+
+    // Seed defaults on empty DB (new installs)
+    if (cards.length === 0) {
+      await initializeDefaultCards();
+      cards = await databaseAdapter.getAllCards();
+    }
     return NextResponse.json({ success: true, data: cards });
   } catch (error) {
     console.error('Failed to fetch cards:', error);
