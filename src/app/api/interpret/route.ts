@@ -5,6 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import type { AACConcept, GeminiConceptResponse } from '@/types';
 
 // Pick a model that actually exists for this API key.
 // (Verified via /api/list-models output)
@@ -70,6 +71,47 @@ function extractJsonFromGeminiText(text: string): unknown | null {
   } catch {
     return null;
   }
+}
+
+const VALID_CONCEPT_TYPES = new Set<AACConcept['type']>([
+  'action',
+  'quantity',
+  'payment',
+  'benefit',
+  'item',
+  'modifier',
+]);
+
+function isAACConcept(value: unknown): value is AACConcept {
+  if (!value || typeof value !== 'object') return false;
+  const v = value as Record<string, unknown>;
+
+  if (typeof v.type !== 'string' || !VALID_CONCEPT_TYPES.has(v.type as AACConcept['type'])) {
+    return false;
+  }
+
+  const conceptValue = v.value;
+  if (typeof conceptValue !== 'string' && typeof conceptValue !== 'number') {
+    return false;
+  }
+
+  // Extra safety: quantities must be numbers
+  if (v.type === 'quantity' && typeof conceptValue !== 'number') {
+    return false;
+  }
+
+  return true;
+}
+
+function isGeminiConceptResponse(value: unknown): value is GeminiConceptResponse {
+  if (!value || typeof value !== 'object') return false;
+  const v = value as Record<string, unknown>;
+
+  if (typeof v.intent !== 'string') return false;
+  if (!Array.isArray(v.concepts)) return false;
+  if (!v.concepts.every(isAACConcept)) return false;
+
+  return true;
 }
 
 export async function POST(request: NextRequest) {
@@ -153,19 +195,18 @@ export async function POST(request: NextRequest) {
     console.log('📝 Gemini raw text (truncated):', text.slice(0, 2000));
 
     const parsed = extractJsonFromGeminiText(text);
-    if (!parsed || typeof parsed !== 'object') {
+    if (!isGeminiConceptResponse(parsed)) {
       return NextResponse.json(
-        { success: false, error: 'No valid JSON in Gemini response', details: text.slice(0, 2000) },
+        { success: false, error: 'No valid Gemini JSON in response', details: text.slice(0, 2000) },
         { status: 500 }
       );
     }
-    const obj = parsed as any;
 
     return NextResponse.json({
       success: true,
       data: {
-        intent: obj.intent,
-        concepts: obj.concepts,
+        intent: parsed.intent,
+        concepts: parsed.concepts,
         source: 'gemini',
         confidence: 0.75
       }
