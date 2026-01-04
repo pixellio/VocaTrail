@@ -20,44 +20,6 @@
  */
 
 import { SemanticInterpretation, AACConcept, GeminiConceptResponse } from '@/types';
-import { validateConcepts } from './promotionMapping';
-
-// Gemini API configuration - using gemini-1.5-flash
-const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
-
-/**
- * System prompt for Gemini - enforces AAC-safe output
- */
-const SYSTEM_PROMPT = `You are an AAC (Augmentative and Alternative Communication) semantic interpreter.
-
-Your ONLY task is to convert promotional or complex phrases into structured, AAC-safe concepts.
-
-STRICT RULES:
-1. Output ONLY valid JSON - no text before or after
-2. Use ONLY these concept types: action, quantity, payment, benefit, item, modifier
-3. Use concrete, visualizable values
-4. NO sentences, idioms, or abstract language
-5. NO emotional or marketing language
-6. Quantities must be explicit numbers
-
-OUTPUT FORMAT (JSON only):
-{
-  "intent": "purchase|information|request",
-  "concepts": [
-    { "type": "action|quantity|payment|benefit|item|modifier", "value": "string or number" }
-  ]
-}
-
-EXAMPLES:
-
-Input: "buy one get one free"
-Output: {"intent":"purchase","concepts":[{"type":"action","value":"buy"},{"type":"quantity","value":2},{"type":"payment","value":"pay_for_one"},{"type":"benefit","value":"second_item_free"}]}
-
-Input: "20% off all items"
-Output: {"intent":"purchase","concepts":[{"type":"benefit","value":"discount"},{"type":"modifier","value":"twenty_percent_off"},{"type":"item","value":"all_items"}]}
-
-Input: "free sample"
-Output: {"intent":"purchase","concepts":[{"type":"benefit","value":"free"},{"type":"item","value":"sample"}]}`;
 
 /**
  * Validate Gemini response against AAC safety rules
@@ -68,6 +30,14 @@ function validateGeminiResponse(response: unknown): response is GeminiConceptRes
   }
 
   const resp = response as Record<string, unknown>;
+  const validTypes = new Set<AACConcept['type']>([
+    'action',
+    'quantity',
+    'payment',
+    'benefit',
+    'item',
+    'modifier',
+  ]);
 
   // Must have intent
   if (typeof resp.intent !== 'string') {
@@ -81,9 +51,25 @@ function validateGeminiResponse(response: unknown): response is GeminiConceptRes
     return false;
   }
 
-  // Validate concepts
-  if (!validateConcepts(resp.concepts as AACConcept[])) {
-    return false;
+  // Validate concepts shape + AAC rules
+  const concepts = resp.concepts;
+  for (const c of concepts) {
+    if (!c || typeof c !== 'object') return false;
+    const concept = c as Record<string, unknown>;
+
+    if (typeof concept.type !== 'string' || !validTypes.has(concept.type as AACConcept['type'])) {
+      return false;
+    }
+    const value = concept.value;
+    if (typeof value !== 'string' && typeof value !== 'number') {
+      return false;
+    }
+    if (concept.type === 'quantity' && typeof value !== 'number') {
+      return false;
+    }
+    if (value === '') {
+      return false;
+    }
   }
 
   // Reject if response contains sentences (basic check)
@@ -94,31 +80,6 @@ function validateGeminiResponse(response: unknown): response is GeminiConceptRes
   }
 
   return true;
-}
-
-/**
- * Parse Gemini API response text to extract JSON
- */
-function parseGeminiText(text: string): GeminiConceptResponse | null {
-  try {
-    // Try to extract JSON from the response
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      console.warn('No JSON found in Gemini response');
-      return null;
-    }
-
-    const parsed = JSON.parse(jsonMatch[0]);
-    
-    if (validateGeminiResponse(parsed)) {
-      return parsed as GeminiConceptResponse;
-    }
-
-    return null;
-  } catch (error) {
-    console.error('Failed to parse Gemini response:', error);
-    return null;
-  }
 }
 
 /**

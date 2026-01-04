@@ -4,9 +4,18 @@
  * This helps debug which models your API key has access to
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 
-export async function GET(request: NextRequest) {
+type GeminiModel = {
+  name: string;
+  displayName?: string;
+  description?: string;
+  supportedGenerationMethods?: string[];
+  inputTokenLimit?: number;
+  outputTokenLimit?: number;
+};
+
+export async function GET() {
   try {
     const apiKey = process.env.GEMINI_API_KEY;
     
@@ -42,11 +51,11 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const data = await response.json();
+    const data = (await response.json()) as { models?: GeminiModel[] };
     
     console.log('📋 Available models:');
     if (data.models && Array.isArray(data.models)) {
-      data.models.forEach((model: any) => {
+      data.models.forEach((model) => {
         console.log(`  - ${model.name}`);
         console.log(`    Display Name: ${model.displayName}`);
         console.log(`    Supported Methods: ${model.supportedGenerationMethods?.join(', ') || 'N/A'}`);
@@ -58,7 +67,7 @@ export async function GET(request: NextRequest) {
       success: true,
       data: {
         totalModels: data.models?.length || 0,
-        models: data.models?.map((model: any) => ({
+        models: data.models?.map((model) => ({
           name: model.name,
           displayName: model.displayName,
           description: model.description,

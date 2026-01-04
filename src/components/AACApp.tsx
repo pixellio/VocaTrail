@@ -256,7 +256,10 @@ const AACApp = () => {
       const result = await response.json();
       
       if (result.success) {
-        const modelNames = result.data.models.map((m: any) => m.name);
+        const models = Array.isArray(result?.data?.models)
+          ? (result.data.models as Array<{ name: string }>)
+          : [];
+        const modelNames = models.map(m => m.name);
         setAvailableModels(modelNames);
         setShowModels(true);
         console.log('✅ Available models:', modelNames);
