@@ -16,6 +16,7 @@
  */
 
 import { Card, AACConcept, TemporaryCard, ConceptType } from '@/types';
+import { findSemanticMatches } from './semanticMatch';
 
 // Symbol mappings for different concept types and values
 const CONCEPT_SYMBOLS: Record<string, Record<string, string>> = {
@@ -171,14 +172,17 @@ function getTextForConcept(concept: AACConcept): string {
 }
 
 /**
- * Search user's vocabulary for matching card
+ * Search user's vocabulary for matching card using exact/substring/synonym
+ * text matching. Used as the fallback when semantic matching is unavailable.
  */
-function findMatchingCard(concept: AACConcept, userCards: Card[]): Card | null {
+function findLexicalMatch(concept: AACConcept, userCards: Card[]): Card | null {
   const conceptText = getTextForConcept(concept).toLowerCase();
-  
+
   for (const card of userCards) {
-    const cardText = card.text.toLowerCase();
-    
+    // Prefer the card's English gloss (see serverTranslate.ts) so a
+    // non-English card's text can still match an English concept.
+    const cardText = (card.translation_en || card.text).toLowerCase();
+
     // Exact match
     if (cardText === conceptText) {
       return card;
@@ -206,7 +210,7 @@ function findMatchingCard(concept: AACConcept, userCards: Card[]): Card | null {
   
   if (mappings) {
     for (const card of userCards) {
-      const cardText = card.text.toLowerCase();
+      const cardText = (card.translation_en || card.text).toLowerCase();
       if (mappings.includes(cardText)) {
         return card;
       }
@@ -234,26 +238,34 @@ function createTemporaryCard(concept: AACConcept, tempId: number): TemporaryCard
 
 /**
  * Map concepts to AAC cards
- * 
+ *
  * For each concept:
- * 1. Search user's existing vocabulary board
+ * 1. Search user's existing vocabulary board (semantic similarity first,
+ *    falling back to lexical matching if embeddings are unavailable)
  * 2. If found → reuse existing card
  * 3. If missing → create temporary AAC card
- * 
+ *
  * @param concepts - Array of semantic concepts
  * @param userCards - User's existing vocabulary cards
  * @returns Array of cards (mix of existing and temporary)
  */
-export function mapConceptsToCards(
+export async function mapConceptsToCards(
   concepts: AACConcept[],
   userCards: Card[]
-): Card[] {
+): Promise<Card[]> {
   const resultCards: Card[] = [];
   let tempIdCounter = -1; // Negative IDs for temporary cards
 
-  for (const concept of concepts) {
-    // Try to find matching card in user's vocabulary
-    const existingCard = findMatchingCard(concept, userCards);
+  // One batched embedding call for every concept up front, instead of one
+  // network round-trip per concept.
+  const candidateTexts = concepts.map(getTextForConcept);
+  const semanticMatches = await findSemanticMatches(candidateTexts, userCards);
+
+  concepts.forEach((concept, index) => {
+    // Semantic match first; fall back to lexical matching per-concept when
+    // semantic matching is unavailable (no API key, network error) or found
+    // nothing above the similarity threshold.
+    const existingCard = semanticMatches?.[index] ?? findLexicalMatch(concept, userCards);
 
     if (existingCard) {
       // Reuse existing card (don't duplicate if already in result)
@@ -265,7 +277,7 @@ export function mapConceptsToCards(
       const tempCard = createTemporaryCard(concept, tempIdCounter--);
       resultCards.push(tempCard);
     }
-  }
+  });
 
   return resultCards;
 }

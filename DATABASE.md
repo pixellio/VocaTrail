@@ -1,12 +1,12 @@
-# VocaTrail Database Configuration
+# VoxaBoard Database Configuration
 
-VocaTrail supports both SQLite (default) and PostgreSQL databases with easy migration between them.
+VoxaBoard supports both SQLite (default) and PostgreSQL databases with easy migration between them.
 
 ## Default Configuration (SQLite)
 
-By default, VocaTrail uses SQLite as the database. No configuration is required.
+By default, VoxaBoard uses SQLite as the database. No configuration is required.
 
-- **Database File**: `./data/vocatrail.db`
+- **Database File**: `./data/voxaboard.db`
 - **No Server Required**: Perfect for development and simple deployments
 - **Portable**: Easy to backup and migrate
 
@@ -16,7 +16,7 @@ To use PostgreSQL, set the `DATABASE_URL` environment variable:
 
 ```bash
 # .env.local
-DATABASE_URL=postgres://username:password@localhost:5432/vocatrail
+DATABASE_URL=postgres://username:password@localhost:5432/voxaboard
 ```
 
 ### PostgreSQL Setup
@@ -35,14 +35,14 @@ DATABASE_URL=postgres://username:password@localhost:5432/vocatrail
 
 2. **Create Database**:
    ```sql
-   CREATE DATABASE vocatrail;
-   CREATE USER vocatrail_user WITH PASSWORD 'your_password';
-   GRANT ALL PRIVILEGES ON DATABASE vocatrail TO vocatrail_user;
+   CREATE DATABASE voxaboard;
+   CREATE USER voxaboard_user WITH PASSWORD 'your_password';
+   GRANT ALL PRIVILEGES ON DATABASE voxaboard TO voxaboard_user;
    ```
 
 3. **Set Environment Variable**:
    ```bash
-   export DATABASE_URL=postgres://vocatrail_user:your_password@localhost:5432/vocatrail
+   export DATABASE_URL=postgres://voxaboard_user:your_password@localhost:5432/voxaboard
    ```
 
 ## Migration Between Databases
@@ -51,10 +51,10 @@ DATABASE_URL=postgres://username:password@localhost:5432/vocatrail
 
 ```bash
 # Migrate from SQLite to PostgreSQL
-npm run migrate sqlite-to-postgresql ./data/vocatrail.db postgres://user:pass@localhost:5432/vocatrail
+npm run migrate sqlite-to-postgresql ./data/voxaboard.db postgres://user:pass@localhost:5432/voxaboard
 
 # Migrate from PostgreSQL to SQLite
-npm run migrate postgresql-to-sqlite postgres://user:pass@localhost:5432/vocatrail ./data/vocatrail.db
+npm run migrate postgresql-to-sqlite postgres://user:pass@localhost:5432/voxaboard ./data/voxaboard.db
 
 # Export data to JSON
 npm run migrate export-json ./backup/cards.json
@@ -72,8 +72,8 @@ const response = await fetch('/api/migrate', {
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
     action: 'sqlite-to-postgresql',
-    sourcePath: './data/vocatrail.db',
-    targetUrl: 'postgres://user:pass@localhost:5432/vocatrail'
+    sourcePath: './data/voxaboard.db',
+    targetUrl: 'postgres://user:pass@localhost:5432/voxaboard'
   })
 });
 
@@ -122,7 +122,7 @@ CREATE INDEX idx_cards_text ON cards(text);
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `DATABASE_URL` | PostgreSQL connection string | `undefined` (uses SQLite) |
-| `SQLITE_PATH` | SQLite database file path | `./data/vocatrail.db` |
+| `SQLITE_PATH` | SQLite database file path | `./data/voxaboard.db` |
 
 ## Troubleshooting
 

@@ -39,7 +39,8 @@ export interface ContextBoardResult {
  */
 export async function generateContextBoard(
   phrase: string,
-  userCards: Card[]
+  userCards: Card[],
+  language?: string
 ): Promise<ContextBoardResult> {
   if (!phrase.trim()) {
     return {
@@ -64,7 +65,7 @@ export async function generateContextBoard(
     // Step 2: Call Gemini AI via server-side API (only if library fails)
     console.log('📡 No library match, trying Gemini AI...');
     
-    interpretation = await interpretWithGemini(phrase);
+    interpretation = await interpretWithGemini(phrase, language);
     
     if (interpretation) {
       console.log('✅ Gemini interpretation successful:', interpretation);
@@ -98,7 +99,7 @@ export async function generateContextBoard(
 
   // Step 4: Convert concepts into AAC cards
   console.log('🃏 Mapping concepts to cards...');
-  const contextCards = mapConceptsToCards(interpretation.concepts, userCards);
+  const contextCards = await mapConceptsToCards(interpretation.concepts, userCards);
 
   // Step 5: Generate context board
   // Include essential communication cards from user's vocabulary
@@ -138,12 +139,12 @@ export async function generateContextBoard(
  * Create a simple context board from a list of concepts
  * Useful for programmatic board creation without phrase interpretation
  */
-export function createBoardFromConcepts(
+export async function createBoardFromConcepts(
   name: string,
   concepts: AACConcept[],
   userCards: Card[]
-): ContextBoard {
-  const contextCards = mapConceptsToCards(concepts, userCards);
+): Promise<ContextBoard> {
+  const contextCards = await mapConceptsToCards(concepts, userCards);
 
   return {
     id: `ctx_${Date.now()}`,
@@ -192,10 +193,10 @@ export const PREDEFINED_CONTEXTS = {
 /**
  * Generate a predefined context board
  */
-export function generatePredefinedBoard(
+export async function generatePredefinedBoard(
   contextKey: keyof typeof PREDEFINED_CONTEXTS,
   userCards: Card[]
-): ContextBoard {
+): Promise<ContextBoard> {
   const context = PREDEFINED_CONTEXTS[contextKey];
   return createBoardFromConcepts(context.name, context.concepts, userCards);
 }

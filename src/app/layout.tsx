@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Footer from "@/components/Footer";
+import { LanguageProvider } from "@/components/LanguageProvider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -13,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "VocaTrail - AAC Communication App",
+  title: "VoxaBoard - AAC Communication App",
   description: "An Augmentative and Alternative Communication (AAC) app to help individuals communicate through visual cards and text-to-speech",
 };
 
@@ -25,9 +27,12 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen`}
       >
-        {children}
+        <LanguageProvider>
+          <div className="flex-1">{children}</div>
+          <Footer />
+        </LanguageProvider>
       </body>
     </html>
   );

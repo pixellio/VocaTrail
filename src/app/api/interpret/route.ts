@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import type { AACConcept, GeminiConceptResponse } from '@/types';
+import { getLanguageLabel } from '@/lib/languagePreference';
 
 // Pick a model that actually exists for this API key.
 // (Verified via /api/list-models output)
@@ -114,9 +115,15 @@ function isGeminiConceptResponse(value: unknown): value is GeminiConceptResponse
   return true;
 }
 
+function buildLanguageHint(language: unknown): string {
+  if (typeof language !== 'string' || !language || language === 'en') return '';
+  const label = getLanguageLabel(language);
+  return `\n\nThe user's selected app language is ${label} (code: ${language}). The input text may be short, slang, or written phonetically in Latin letters (romanized/transliterated ${label}) rather than standard spelling — read it as ${label} in that case, rather than assuming it is misspelled English.`;
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const { phrase } = await request.json();
+    const { phrase, language } = await request.json();
 
     if (!phrase || typeof phrase !== 'string') {
       return NextResponse.json(
@@ -154,7 +161,7 @@ export async function POST(request: NextRequest) {
           {
             parts: [
               {
-                text: `${SYSTEM_PROMPT}\n\nInput: "${phrase}"\nOutput:`
+                text: `${SYSTEM_PROMPT}${buildLanguageHint(language)}\n\nInput: "${phrase}"\nOutput:`
               }
             ]
           }
@@ -163,9 +170,17 @@ export async function POST(request: NextRequest) {
           temperature: 0.1,
           topK: 1,
           topP: 0.8,
-          maxOutputTokens: 2000,
+          maxOutputTokens: 1024,
           // Ask for JSON output (best effort; model may still return text)
           responseMimeType: 'application/json',
+          // This is a small structured-extraction task, not a reasoning task —
+          // disable extended thinking so its token budget doesn't eat into
+          // maxOutputTokens and truncate the JSON before it's complete
+          // (thinkingTokenCount was consuming ~95% of the budget, causing
+          // MAX_TOKENS cutoffs on some inputs).
+          thinkingConfig: {
+            thinkingBudget: 0,
+          },
         },
       })
     });

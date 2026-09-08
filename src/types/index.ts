@@ -7,6 +7,7 @@ export interface Card {
   created_at?: string;
   updated_at?: string;
   temporary?: boolean; // Marks cards as temporary (not persisted)
+  translation_en?: string | null; // Hidden English gloss used for cross-lingual matching only
 }
 
 // AAC Concept Types (from ins_mapping.md)

@@ -3,7 +3,7 @@
 ## Database Behavior by Environment
 
 ### Local Development
-- **Database**: SQLite file (`./data/vocatrail.db`)
+- **Database**: SQLite file (`./data/voxaboard.db`)
 - **Persistence**: Data is saved to disk
 - **Fallback**: If SQLite fails, falls back to in-memory database
 
