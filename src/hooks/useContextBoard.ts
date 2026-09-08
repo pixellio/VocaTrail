@@ -5,6 +5,7 @@ import { Card, ContextBoard } from '@/types';
 import { generateContextBoard, ContextBoardResult, logInterpretation } from '@/lib/contextBoard';
 import { getAllPromotionPatterns } from '@/lib/promotionMapping';
 import { isTemporaryCard, convertToPermanentCard } from '@/lib/conceptToCard';
+import { parseLocationPayload, resolvePhraseFromPayload, resolveLocationById, LocationPayload } from '@/lib/locationContext';
 
 export interface UseContextBoardReturn {
   // State
@@ -12,12 +13,14 @@ export interface UseContextBoardReturn {
   isProcessing: boolean;
   error: string | null;
   interpretationSource: 'library' | 'gemini' | 'fallback' | null;
-  
+  locationInfo: LocationPayload | null;
+
   // Actions
-  interpretPhrase: (phrase: string, userCards: Card[]) => Promise<void>;
+  interpretPhrase: (phrase: string, userCards: Card[], language?: string) => Promise<void>;
+  scanLocationPayload: (raw: string, userCards: Card[], language?: string) => Promise<void>;
   clearContextBoard: () => void;
   saveTemporaryCard: (card: Card, onSave: (card: Omit<Card, 'id' | 'created_at' | 'updated_at'>) => Promise<Card>) => Promise<Card | null>;
-  
+
   // Helpers
   getSuggestions: () => string[];
 }
@@ -35,11 +38,14 @@ export function useContextBoard(): UseContextBoardReturn {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [interpretationSource, setInterpretationSource] = useState<'library' | 'gemini' | 'fallback' | null>(null);
+  const [locationInfo, setLocationInfo] = useState<LocationPayload | null>(null);
 
   /**
-   * Interpret a phrase and generate context board
+   * Shared runner behind both interpretPhrase and scanLocationPayload: takes
+   * a resolved phrase and drives it through the same library → Gemini →
+   * fallback pipeline.
    */
-  const interpretPhrase = useCallback(async (phrase: string, userCards: Card[]) => {
+  const runInterpretation = useCallback(async (phrase: string, userCards: Card[], language?: string) => {
     setIsProcessing(true);
     setError(null);
     setInterpretationSource(null);
@@ -47,13 +53,14 @@ export function useContextBoard(): UseContextBoardReturn {
     try {
       const result: ContextBoardResult = await generateContextBoard(
         phrase,
-        userCards
+        userCards,
+        language
       );
 
       if (result.success && result.board) {
         setContextBoard(result.board);
         setInterpretationSource(result.source === 'error' ? null : result.source);
-        
+
         // Log for explainability
         logInterpretation(phrase, result.board.interpretation, result.source);
       } else {
@@ -70,12 +77,42 @@ export function useContextBoard(): UseContextBoardReturn {
   }, []);
 
   /**
+   * Interpret a phrase and generate context board
+   */
+  const interpretPhrase = useCallback(async (phrase: string, userCards: Card[], language?: string) => {
+    setLocationInfo(null);
+    await runInterpretation(phrase, userCards, language);
+  }, [runInterpretation]);
+
+  /**
+   * Interpret a scanned QR payload and generate a location-based context
+   * board. A location QR normally just contains a registered location ID —
+   * try resolving that first; if it isn't a known location, fall back to
+   * parsing the raw scan as inline JSON/plain text (manual-paste path).
+   */
+  const scanLocationPayload = useCallback(async (raw: string, userCards: Card[], language?: string) => {
+    const trimmed = raw.trim();
+    const resolved = await resolveLocationById(trimmed);
+    const payload = resolved ?? parseLocationPayload(trimmed);
+    setLocationInfo(payload);
+
+    const phrase = resolvePhraseFromPayload(payload);
+    if (!phrase.trim()) {
+      setError('QR code did not contain any usable instructions or phrase.');
+      return;
+    }
+
+    await runInterpretation(phrase, userCards, language);
+  }, [runInterpretation]);
+
+  /**
    * Clear the current context board
    */
   const clearContextBoard = useCallback(() => {
     setContextBoard(null);
     setError(null);
     setInterpretationSource(null);
+    setLocationInfo(null);
   }, []);
 
   /**
@@ -123,7 +160,9 @@ export function useContextBoard(): UseContextBoardReturn {
     isProcessing,
     error,
     interpretationSource,
+    locationInfo,
     interpretPhrase,
+    scanLocationPayload,
     clearContextBoard,
     saveTemporaryCard,
     getSuggestions

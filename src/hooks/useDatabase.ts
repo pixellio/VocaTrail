@@ -55,11 +55,11 @@ export function useDatabase() {
       throw new Error(result.error || 'Failed to fetch cards');
     },
 
-    async addCard(card: Omit<Card, 'id' | 'created_at' | 'updated_at'>): Promise<Card> {
+    async addCard(card: Omit<Card, 'id' | 'created_at' | 'updated_at'>, language?: string): Promise<Card> {
       const response = await fetch('/api/cards', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(card)
+        body: JSON.stringify({ ...card, language })
       });
       const result = await response.json();
       if (result.success) {
@@ -68,11 +68,11 @@ export function useDatabase() {
       throw new Error(result.error || 'Failed to add card');
     },
 
-    async updateCard(id: number, updates: Partial<Omit<Card, 'id' | 'created_at' | 'updated_at'>>): Promise<Card | null> {
+    async updateCard(id: number, updates: Partial<Omit<Card, 'id' | 'created_at' | 'updated_at'>>, language?: string): Promise<Card | null> {
       const response = await fetch(`/api/cards/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates)
+        body: JSON.stringify({ ...updates, language })
       });
       const result = await response.json();
       if (result.success) {

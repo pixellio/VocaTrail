@@ -1,33 +1,40 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Edit3, Trash2, X, Volume2, Grid, List, Sparkles, Store, Loader2, Save, Info, ChevronDown, ChevronUp } from 'lucide-react';
+import Image from 'next/image';
+import { Plus, Edit3, Trash2, X, Volume2, Grid, List, Sparkles, Store, Loader2, Save, Info, ChevronDown, ChevronUp, QrCode, MapPin } from 'lucide-react';
 import { useDatabase } from '@/hooks/useDatabase';
 import { useContextBoard } from '@/hooks/useContextBoard';
 import { Card } from '@/types';
 import { isTemporaryCard } from '@/lib/conceptToCard';
+import QRScanner from '@/components/QRScanner';
+import SettingsMenu from '@/components/SettingsMenu';
+import { useLanguage } from '@/components/LanguageProvider';
 
 const AACApp = () => {
   const [cards, setCards] = useState<Card[]>([]);
   const { isInitialized, isLoading, error, storageService } = useDatabase();
+  const { language } = useLanguage();
   const {
     contextBoard,
     isProcessing,
     error: contextError,
     interpretationSource,
+    locationInfo,
     interpretPhrase,
+    scanLocationPayload,
     clearContextBoard,
     saveTemporaryCard,
     getSuggestions
   } = useContextBoard();
-  
+
   const [sentence, setSentence] = useState<Card[]>([]);
   const [isEditing, setIsEditing] = useState(false);
   const [editingCard, setEditingCard] = useState<Card | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [selectedCategory, setSelectedCategory] = useState('All');
-  
+
   // Context board UI state
   const [showContextInput, setShowContextInput] = useState(false);
   const [contextPhrase, setContextPhrase] = useState('');
@@ -35,6 +42,7 @@ const AACApp = () => {
   const [showContextBoard, setShowContextBoard] = useState(true);
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [showModels, setShowModels] = useState(false);
+  const [showQRScanner, setShowQRScanner] = useState(false);
 
   // Ensure default Question cards exist even on non-empty DBs (UI-level enforcement).
   const ensuredQuestionDefaultsRef = useRef(false);
@@ -150,7 +158,7 @@ const AACApp = () => {
     if (newCard.text.trim()) {
       try {
         if (storageService) {
-          const savedCard = await storageService.addCard(newCard);
+          const savedCard = await storageService.addCard(newCard, language);
           setCards(prev => [...prev, savedCard]);
         } else {
           // Fallback to local state if storage not available
@@ -179,7 +187,7 @@ const AACApp = () => {
     if (editingCard) {
       try {
         if (storageService) {
-          const updatedCard = await storageService.updateCard(editingCard.id, editingCard);
+          const updatedCard = await storageService.updateCard(editingCard.id, editingCard, language);
           if (updatedCard) {
             setCards(prev => prev.map(card => 
               card.id === editingCard.id ? updatedCard : card
@@ -228,7 +236,7 @@ const AACApp = () => {
   // Context board handlers
   const handleInterpretPhrase = async () => {
     if (contextPhrase.trim()) {
-      await interpretPhrase(contextPhrase, cards);
+      await interpretPhrase(contextPhrase, cards, language);
       setShowSuggestions(false);
     }
   };
@@ -238,10 +246,15 @@ const AACApp = () => {
     setShowSuggestions(false);
   };
 
+  const handleQRScan = async (data: string) => {
+    setShowQRScanner(false);
+    await scanLocationPayload(data, cards, language);
+  };
+
   const handleSaveTemporaryCard = async (card: Card) => {
     if (storageService && isTemporaryCard(card)) {
       const savedCard = await saveTemporaryCard(card, async (cardData) => {
-        return await storageService.addCard(cardData);
+        return await storageService.addCard(cardData, language);
       });
       if (savedCard) {
         setCards(prev => [...prev, savedCard]);
@@ -302,9 +315,12 @@ const AACApp = () => {
       {/* Header */}
       <div className="bg-white shadow-md p-4">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-800">Vocal Trail</h1>
-            <p className="text-sm text-gray-500">AAC Communication</p>
+          <div className="flex items-center space-x-3">
+            <Image src="/logo-only.jpg" alt="VoxaBoard logo" width={40} height={40} className="rounded-lg" priority />
+            <div>
+              <h1 className="text-2xl font-bold text-gray-800">VoxaBoard</h1>
+              <p className="text-sm text-gray-500">AAC Communication</p>
+            </div>
           </div>
           <div className="flex items-center space-x-4">
             <button
@@ -316,6 +332,14 @@ const AACApp = () => {
             >
               <Sparkles size={20} />
               <span className="hidden sm:inline">AI Interpret</span>
+            </button>
+            <button
+              onClick={() => setShowQRScanner(true)}
+              className="flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-600"
+              title="Scan a location QR code"
+            >
+              <QrCode size={20} />
+              <span className="hidden sm:inline">Scan QR</span>
             </button>
             <button
               onClick={handleCheckModels}
@@ -341,6 +365,7 @@ const AACApp = () => {
                 <option key={category} value={category}>{category}</option>
               ))}
             </select>
+            <SettingsMenu />
           </div>
         </div>
       </div>
@@ -455,6 +480,17 @@ const AACApp = () => {
             
             {showContextBoard && (
               <>
+                {/* Location QR info, when this board came from a scanned QR code */}
+                {locationInfo && (locationInfo.title || locationInfo.instructions) && (
+                  <div className="mb-2 flex items-start space-x-1 text-sm text-amber-700">
+                    <MapPin size={14} className="mt-0.5 flex-shrink-0" />
+                    <span>
+                      {locationInfo.title && <strong>{locationInfo.title}: </strong>}
+                      {locationInfo.instructions}
+                    </span>
+                  </div>
+                )}
+
                 {/* Interpretation info */}
                 <div className="mb-3 flex items-center space-x-4 text-sm text-amber-700">
                   <div className="flex items-center space-x-1">
@@ -464,7 +500,7 @@ const AACApp = () => {
                   <span>•</span>
                   <span>Confidence: {Math.round(contextBoard.interpretation.confidence * 100)}%</span>
                 </div>
-                
+
                 {/* Context Cards Grid */}
                 <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
                   {contextBoard.cards.map(card => (
@@ -803,6 +839,11 @@ const AACApp = () => {
             )}
           </div>
         </div>
+      )}
+
+      {/* QR Scanner Modal */}
+      {showQRScanner && (
+        <QRScanner onScan={handleQRScan} onClose={() => setShowQRScanner(false)} />
       )}
     </div>
   );

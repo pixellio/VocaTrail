@@ -70,7 +70,7 @@ async function main() {
 
       default:
         console.log(`
-VocaTrail Database Migration Tool
+VoxaBoard Database Migration Tool
 
 Usage:
   node migrate.js sqlite-to-postgresql <sqlite-path> <postgres-url>
@@ -79,8 +79,8 @@ Usage:
   node migrate.js import-json <json-file>
 
 Examples:
-  node migrate.js sqlite-to-postgresql ./data/vocatrail.db postgres://user:pass@localhost:5432/vocatrail
-  node migrate.js postgresql-to-sqlite postgres://user:pass@localhost:5432/vocatrail ./data/vocatrail.db
+  node migrate.js sqlite-to-postgresql ./data/voxaboard.db postgres://user:pass@localhost:5432/voxaboard
+  node migrate.js postgresql-to-sqlite postgres://user:pass@localhost:5432/voxaboard ./data/voxaboard.db
   node migrate.js export-json ./backup/cards.json
   node migrate.js import-json ./backup/cards.json
         `);

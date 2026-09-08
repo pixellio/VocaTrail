@@ -1,4 +1,4 @@
-# VocaTrail - AAC Communication App
+# VoxaBoard - AAC Communication App
 
 A modern Augmentative and Alternative Communication (AAC) application built with Next.js, TypeScript, and Tailwind CSS. This app helps individuals with communication difficulties express themselves through visual cards and text-to-speech functionality.
 
@@ -45,21 +45,21 @@ A modern Augmentative and Alternative Communication (AAC) application built with
 
 ## Database Configuration
 
-VocaTrail supports both SQLite (default) and PostgreSQL databases with easy migration between them.
+VoxaBoard supports both SQLite (default) and PostgreSQL databases with easy migration between them.
 
 ### Default (SQLite)
-No configuration required. Uses `./data/vocatrail.db` by default.
+No configuration required. Uses `./data/voxaboard.db` by default.
 
 ### PostgreSQL
 Set the `DATABASE_URL` environment variable:
 ```bash
-DATABASE_URL=postgres://username:password@localhost:5432/vocatrail
+DATABASE_URL=postgres://username:password@localhost:5432/voxaboard
 ```
 
 ### Migration
 ```bash
 # Migrate from SQLite to PostgreSQL
-npm run migrate sqlite-to-postgresql ./data/vocatrail.db postgres://user:pass@localhost:5432/vocatrail
+npm run migrate sqlite-to-postgresql ./data/voxaboard.db postgres://user:pass@localhost:5432/voxaboard
 
 # Export/Import data
 npm run migrate export-json ./backup/cards.json
@@ -80,7 +80,7 @@ See [DATABASE.md](./DATABASE.md) for detailed configuration and migration instru
 1. Clone the repository:
 ```bash
 git clone <repository-url>
-cd VocaTrail
+cd VoxaBoard
 ```
 
 2. Install dependencies:
@@ -97,10 +97,10 @@ npm run dev
 
 ## Database Configuration
 
-VocaTrail supports multiple database backends with automatic fallback:
+VoxaBoard supports multiple database backends with automatic fallback:
 
 ### Local Development
-- **SQLite** - File-based database (`./data/vocatrail.db`)
+- **SQLite** - File-based database (`./data/voxaboard.db`)
 - **Persistent storage** - Data saved to disk
 - **No configuration required**
 
@@ -181,4 +181,4 @@ For support, feature requests, or bug reports, please open an issue on GitHub.
 
 ---
 
-**VocaTrail** - Empowering communication through technology 🌟
+**VoxaBoard** - Empowering communication through technology 🌟

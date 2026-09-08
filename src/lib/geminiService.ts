@@ -89,17 +89,18 @@ function validateGeminiResponse(response: unknown): response is GeminiConceptRes
  * @returns SemanticInterpretation or null if failed
  */
 export async function interpretWithGemini(
-  phrase: string
+  phrase: string,
+  language?: string
 ): Promise<SemanticInterpretation | null> {
   try {
     console.log('📡 Calling server-side Gemini API...');
-    
+
     const response = await fetch('/api/interpret', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ phrase })
+      body: JSON.stringify({ phrase, language })
     });
 
     const result = await response.json();

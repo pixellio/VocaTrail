@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { databaseAdapter, initializeDefaultCards } from '@/lib/database';
+import { translateToEnglishGloss } from '@/lib/serverTranslate';
 
 // GET /api/cards - Get all cards
 export async function GET() {
@@ -26,7 +27,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const cardData = await request.json();
-    const { text, symbol, category, color } = cardData;
+    const { text, symbol, category, color, language } = cardData;
 
     if (!text || !symbol || !category || !color) {
       return NextResponse.json(
@@ -36,8 +37,9 @@ export async function POST(request: NextRequest) {
     }
 
     await databaseAdapter.initialize();
-    const newCard = await databaseAdapter.addCard({ text, symbol, category, color });
-    
+    const translation_en = await translateToEnglishGloss(text, language);
+    const newCard = await databaseAdapter.addCard({ text, symbol, category, color, translation_en });
+
     return NextResponse.json({ success: true, data: newCard }, { status: 201 });
   } catch (error) {
     console.error('Failed to create card:', error);

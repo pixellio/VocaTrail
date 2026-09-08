@@ -19,7 +19,7 @@ class SQLiteAdapter implements DatabaseAdapter {
   private db: Database.Database | null = null;
   private dbPath: string;
 
-  constructor(dbPath: string = './data/vocatrail.db') {
+  constructor(dbPath: string = './data/voxaboard.db') {
     this.dbPath = dbPath;
   }
 
@@ -36,7 +36,7 @@ class SQLiteAdapter implements DatabaseAdapter {
     }
 
     this.db = new Database(this.dbPath);
-    
+
     // Create cards table
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS cards (
@@ -49,6 +49,13 @@ class SQLiteAdapter implements DatabaseAdapter {
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `);
+
+    // Migrate databases created before translation_en existed (CREATE TABLE
+    // IF NOT EXISTS above doesn't alter an already-existing table).
+    const columns = this.db.prepare(`PRAGMA table_info(cards)`).all() as Array<{ name: string }>;
+    if (!columns.some((col) => col.name === 'translation_en')) {
+      this.db.exec(`ALTER TABLE cards ADD COLUMN translation_en TEXT`);
+    }
 
     // Create indexes
     this.db.exec(`
@@ -66,14 +73,14 @@ class SQLiteAdapter implements DatabaseAdapter {
 
   async addCard(card: Omit<Card, 'id' | 'created_at' | 'updated_at'>): Promise<Card> {
     if (!this.db) throw new Error('Database not initialized');
-    
+
     const stmt = this.db.prepare(`
-      INSERT INTO cards (text, symbol, category, color, created_at, updated_at)
-      VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))
+      INSERT INTO cards (text, symbol, category, color, translation_en, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))
     `);
-    
-    const result = stmt.run(card.text, card.symbol, card.category, card.color);
-    
+
+    const result = stmt.run(card.text, card.symbol, card.category, card.color, card.translation_en ?? null);
+
     return {
       ...card,
       id: result.lastInsertRowid as number,
@@ -84,20 +91,20 @@ class SQLiteAdapter implements DatabaseAdapter {
 
   async updateCard(id: number, updates: Partial<Omit<Card, 'id' | 'created_at' | 'updated_at'>>): Promise<Card | null> {
     if (!this.db) throw new Error('Database not initialized');
-    
+
     const existingCard = await this.getCardById(id);
     if (!existingCard) return null;
 
     const updatedCard = { ...existingCard, ...updates };
-    
+
     const stmt = this.db.prepare(`
-      UPDATE cards 
-      SET text = ?, symbol = ?, category = ?, color = ?, updated_at = datetime('now')
+      UPDATE cards
+      SET text = ?, symbol = ?, category = ?, color = ?, translation_en = ?, updated_at = datetime('now')
       WHERE id = ?
     `);
-    
-    stmt.run(updatedCard.text, updatedCard.symbol, updatedCard.category, updatedCard.color, id);
-    
+
+    stmt.run(updatedCard.text, updatedCard.symbol, updatedCard.category, updatedCard.color, updatedCard.translation_en ?? null, id);
+
     return {
       ...updatedCard,
       updated_at: new Date().toISOString()
@@ -157,6 +164,9 @@ class PostgreSQLAdapter implements DatabaseAdapter {
       )
     `);
 
+    // Migrate databases created before translation_en existed
+    await this.client.query(`ALTER TABLE cards ADD COLUMN IF NOT EXISTS translation_en TEXT`);
+
     // Create indexes
     await this.client.query(`
       CREATE INDEX IF NOT EXISTS idx_cards_category ON cards(category);
@@ -173,31 +183,31 @@ class PostgreSQLAdapter implements DatabaseAdapter {
 
   async addCard(card: Omit<Card, 'id' | 'created_at' | 'updated_at'>): Promise<Card> {
     if (!this.client) throw new Error('Database not initialized');
-    
+
     const result = await this.client.query(`
-      INSERT INTO cards (text, symbol, category, color, created_at, updated_at)
-      VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      INSERT INTO cards (text, symbol, category, color, translation_en, created_at, updated_at)
+      VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
       RETURNING *
-    `, [card.text, card.symbol, card.category, card.color]);
-    
+    `, [card.text, card.symbol, card.category, card.color, card.translation_en ?? null]);
+
     return result.rows[0] as Card;
   }
 
   async updateCard(id: number, updates: Partial<Omit<Card, 'id' | 'created_at' | 'updated_at'>>): Promise<Card | null> {
     if (!this.client) throw new Error('Database not initialized');
-    
+
     const existingCard = await this.getCardById(id);
     if (!existingCard) return null;
 
     const updatedCard = { ...existingCard, ...updates };
-    
+
     const result = await this.client.query(`
-      UPDATE cards 
-      SET text = $1, symbol = $2, category = $3, color = $4, updated_at = CURRENT_TIMESTAMP
-      WHERE id = $5
+      UPDATE cards
+      SET text = $1, symbol = $2, category = $3, color = $4, translation_en = $5, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $6
       RETURNING *
-    `, [updatedCard.text, updatedCard.symbol, updatedCard.category, updatedCard.color, id]);
-    
+    `, [updatedCard.text, updatedCard.symbol, updatedCard.category, updatedCard.color, updatedCard.translation_en ?? null, id]);
+
     return result.rows[0] as Card;
   }
 

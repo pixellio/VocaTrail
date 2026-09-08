@@ -1,7 +1,7 @@
 import { Card } from '@/types';
 
 class StorageService {
-  private dbName = 'VocaTrailDB';
+  private dbName = 'VoxaBoardDB';
   private version = 1;
   private storeName = 'cards';
   private db: IDBDatabase | null = null;

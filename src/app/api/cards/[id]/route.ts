@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { databaseAdapter } from '@/lib/database';
+import { translateToEnglishGloss } from '@/lib/serverTranslate';
 
 // GET /api/cards/[id] - Get a specific card
 export async function GET(
@@ -52,11 +53,20 @@ export async function PUT(
     }
 
     const updates = await request.json();
-    const { text, symbol, category, color } = updates;
+    const { text, symbol, category, color, language } = updates;
 
     await databaseAdapter.initialize();
-    const updatedCard = await databaseAdapter.updateCard(id, { text, symbol, category, color });
-    
+    // Only re-translate (and touch translation_en) when text is actually
+    // changing — otherwise leave the existing gloss as-is.
+    const translation_en = typeof text === 'string' ? await translateToEnglishGloss(text, language) : undefined;
+    const updatedCard = await databaseAdapter.updateCard(id, {
+      text,
+      symbol,
+      category,
+      color,
+      ...(translation_en !== undefined ? { translation_en } : {}),
+    });
+
     if (!updatedCard) {
       return NextResponse.json(
         { success: false, error: 'Card not found' },
