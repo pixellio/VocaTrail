@@ -1,11 +1,11 @@
 import Link from 'next/link';
-import { Plus, MapPin } from 'lucide-react';
+import { Plus, MapPin, ShieldCheck } from 'lucide-react';
 import { requireVendorPage } from '@/lib/vendorAuth';
 import { getAllLocations } from '@/lib/locationsDatabase';
 import VendorLogoutButton from '@/components/VendorLogoutButton';
 
 export default async function VendorDashboardPage() {
-  await requireVendorPage();
+  const { email, isSuperAdmin } = await requireVendorPage();
   const locations = getAllLocations();
 
   return (
@@ -16,7 +16,19 @@ export default async function VendorDashboardPage() {
             <h1 className="text-2xl font-bold text-gray-800">Location Dashboard</h1>
             <p className="text-sm text-gray-500">Registered locations for VoxaBoard&apos;s QR context boards</p>
           </div>
-          <VendorLogoutButton />
+          <div className="flex items-center gap-3">
+            {isSuperAdmin && (
+              <Link
+                href="/admin/vendors"
+                className="flex items-center gap-1 text-sm text-purple-600 hover:underline"
+              >
+                <ShieldCheck size={14} />
+                Manage vendors
+              </Link>
+            )}
+            <span className="text-sm text-gray-500">{email}</span>
+            <VendorLogoutButton />
+          </div>
         </div>
       </div>
 

@@ -1,14 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createLocation, getAllLocations } from '@/lib/locationsDatabase';
-import { VENDOR_SESSION_COOKIE, verifyVendorSession } from '@/lib/vendorSession';
+import { SESSION_COOKIE, getSession, isSuperAdmin } from '@/lib/session';
 
 const MAX_LOGO_BYTES = 2 * 1024 * 1024; // 2MB
 const ALLOWED_LOGO_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml']);
 
 async function requireVendorAuth() {
   const cookieStore = await cookies();
-  return verifyVendorSession(cookieStore.get(VENDOR_SESSION_COOKIE)?.value);
+  const session = getSession(cookieStore.get(SESSION_COOKIE)?.value);
+  if (!session) return false;
+  return session.role === 'vendor' || isSuperAdmin(session.email);
 }
 
 // GET /api/locations - list locations for the dashboard (protected)
