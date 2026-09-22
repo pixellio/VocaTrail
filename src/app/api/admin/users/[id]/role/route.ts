@@ -22,6 +22,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json({ success: false, error: 'Role must be "user" or "vendor".' }, { status: 400 });
   }
 
-  setUserRole(id, role as UserRole);
+  await setUserRole(id, role as UserRole);
   return NextResponse.json({ success: true });
 }

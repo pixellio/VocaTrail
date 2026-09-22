@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'refreshToken is required' }, { status: 400 });
     }
 
-    revokeRefreshToken(refreshToken);
+    await revokeRefreshToken(refreshToken);
 
     return NextResponse.json({ success: true, data: { loggedOut: true } });
   } catch (error) {

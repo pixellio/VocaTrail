@@ -7,7 +7,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   const { id } = await params;
 
   try {
-    const faqs = getLocationFaqs(id);
+    const faqs = await getLocationFaqs(id);
     if (!faqs) {
       return NextResponse.json({ success: false, error: 'No FAQs found for this location.' }, { status: 404 });
     }

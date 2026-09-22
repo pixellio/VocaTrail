@@ -15,6 +15,6 @@ export async function GET() {
     return NextResponse.json({ success: false, error: 'Not authorized.' }, { status: 403 });
   }
 
-  const users = listUsers();
+  const users = await listUsers();
   return NextResponse.json({ success: true, data: users });
 }
