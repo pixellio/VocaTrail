@@ -15,12 +15,13 @@ function verifyPkce(codeVerifier: string, codeChallenge: string): boolean {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
-function findUserById(userId: string): AppUser | null {
+async function findUserById(userId: string): Promise<AppUser | null> {
   // usersDatabase.ts only exposes lookup by email; the auth-code row stores
   // the user id, so resolve via a small scan rather than adding a new export
   // just for this — user counts here are small (Google-authenticated app
   // users, not a public dataset).
-  return listUsers().find((u) => u.id === userId) ?? null;
+  const users = await listUsers();
+  return users.find((u) => u.id === userId) ?? null;
 }
 
 // POST /api/auth/mobile/token - exchanges a one-time auth code (from the
@@ -36,7 +37,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const consumed = consumeAuthCode(code);
+    const consumed = await consumeAuthCode(code);
     if (!consumed) {
       return NextResponse.json(
         { success: false, error: 'Invalid or expired code.' },
@@ -48,13 +49,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'PKCE verification failed.' }, { status: 401 });
     }
 
-    const user = findUserById(consumed.userId);
+    const user = await findUserById(consumed.userId);
     if (!user) {
       return NextResponse.json({ success: false, error: 'User not found.' }, { status: 401 });
     }
 
     const accessToken = await createAccessToken({ sub: user.id, email: user.email, role: user.role });
-    const refreshToken = createRefreshToken(user.id);
+    const refreshToken = await createRefreshToken(user.id);
 
     return NextResponse.json({
       success: true,

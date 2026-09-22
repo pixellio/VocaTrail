@@ -133,6 +133,18 @@ VoxaBoard supports multiple database backends with automatic fallback:
 - **Set environment variable**: `DATABASE_URL=postgres://user:pass@host:port/db`
 - **Migration support** - Easy data migration from SQLite
 
+### ⚠️ Vendor/location/mobile-auth data is a SEPARATE set of SQLite files with no Postgres support yet
+The `DATABASE_URL`/PostgreSQL setup above only covers the original cards database (`./data/voxaboard.db`). The vendor-facing features added later — locations (`locations.db`), users/Google auth (`users.db`), and the mobile app's JWT refresh tokens (`mobile_auth.db`) — are **separate SQLite files** with **no hosted-database option built yet**. Each only supports being pointed at an alternate file path via env var (`LOCATIONS_SQLITE_PATH`, `USERS_SQLITE_PATH`, `MOBILE_AUTH_SQLITE_PATH`), not a different backend entirely.
+
+**On Vercel, this matters a lot**: the filesystem is read-only except for `/tmp`, and `/tmp` is **not persistent** — it doesn't survive cold starts, scale-events, or redeploys, and isn't shared across concurrent instances. Pointing these env vars at `/tmp/*.db` makes the app *start* (no more filesystem-write crash), but user accounts, vendor locations, and — notably — revoked mobile refresh tokens can silently vanish or reappear depending on which instance handles a given request. This is a known, accepted stopgap for demo/staging use, **not** safe for real user data. The real fix is migrating these three files to a hosted database (the same `DATABASE_URL` Postgres instance used for cards would work, or a separate one) — not yet done.
+
+```bash
+# Stopgap only — see the warning above before using this in anything but a demo
+LOCATIONS_SQLITE_PATH=/tmp/locations.db
+USERS_SQLITE_PATH=/tmp/users.db
+MOBILE_AUTH_SQLITE_PATH=/tmp/mobile_auth.db
+```
+
 ### Environment Variables
 
 ```bash

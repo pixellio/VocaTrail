@@ -21,17 +21,17 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   const { id } = await params;
 
   try {
-    const location = getLocationById(id);
+    const location = await getLocationById(id);
     if (!location) {
       return NextResponse.json({ success: false, error: 'Location not found.' }, { status: 404 });
     }
 
     const faqs = await generateFaqsWithGemini(location.instructions);
-    saveLocationFaqs(id, faqs, 'ok');
+    await saveLocationFaqs(id, faqs, 'ok');
     return NextResponse.json({ success: true, data: { locationId: id, faqs } });
   } catch (error) {
     console.error('Failed to regenerate FAQs:', error);
-    saveLocationFaqs(id, [], 'failed');
+    await saveLocationFaqs(id, [], 'failed');
     return NextResponse.json({ success: false, error: 'Failed to regenerate FAQs.' }, { status: 500 });
   }
 }

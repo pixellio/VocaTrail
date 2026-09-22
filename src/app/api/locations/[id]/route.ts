@@ -25,7 +25,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   const { id } = await params;
 
   try {
-    const location = getLocationById(id);
+    const location = await getLocationById(id);
     if (!location) {
       return NextResponse.json({ success: false, error: 'Location not found.' }, { status: 404 });
     }
@@ -81,7 +81,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       logo = { data: buffer, mime: logoFile.type };
     }
 
-    const { found, instructionsChanged } = updateLocation(id, {
+    const { found, instructionsChanged } = await updateLocation(id, {
       name,
       instructions,
       contact_name: contactName || null,
@@ -98,10 +98,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     if (instructionsChanged) {
       try {
         const faqs = await generateFaqsWithGemini(instructions);
-        saveLocationFaqs(id, faqs, 'ok');
+        await saveLocationFaqs(id, faqs, 'ok');
       } catch (error) {
         console.error('Failed to regenerate FAQs after instructions edit:', error);
-        saveLocationFaqs(id, [], 'failed');
+        await saveLocationFaqs(id, [], 'failed');
       }
     }
 
@@ -121,7 +121,7 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
   const { id } = await params;
 
   try {
-    const deleted = deleteLocation(id);
+    const deleted = await deleteLocation(id);
     if (!deleted) {
       return NextResponse.json({ success: false, error: 'Location not found.' }, { status: 404 });
     }

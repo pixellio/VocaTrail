@@ -9,7 +9,7 @@ export default async function EditLocationPage({ params }: { params: Promise<{ i
   await requireVendorPage();
   const { id } = await params;
 
-  const location = getLocationDetail(id);
+  const location = await getLocationDetail(id);
   if (!location) {
     notFound();
   }

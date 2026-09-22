@@ -6,7 +6,7 @@ import VendorRoleToggle from '@/components/VendorRoleToggle';
 
 export default async function VendorManagementPage() {
   await requireSuperAdminPage();
-  const users = listUsers();
+  const users = await listUsers();
 
   return (
     <div className="min-h-screen bg-gray-50">

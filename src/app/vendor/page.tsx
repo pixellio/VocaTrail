@@ -6,7 +6,7 @@ import VendorLogoutButton from '@/components/VendorLogoutButton';
 
 export default async function VendorDashboardPage() {
   const { email, isSuperAdmin } = await requireVendorPage();
-  const locations = getAllLocations();
+  const locations = await getAllLocations();
 
   return (
     <div className="min-h-screen bg-gray-50">

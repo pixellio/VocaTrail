@@ -1,8 +1,8 @@
 import { Card } from '@/types';
 import Database from 'better-sqlite3';
-import { Pool, PoolClient } from 'pg';
 import * as fs from 'fs';
 import * as path from 'path';
+import { getPgPool, isPostgresConfigured } from './pgPool';
 
 export interface DatabaseAdapter {
   initialize(): Promise<void>;
@@ -137,54 +137,49 @@ class SQLiteAdapter implements DatabaseAdapter {
   }
 }
 
-// PostgreSQL Implementation
+// PostgreSQL Implementation — uses the shared pool (pgPool.ts), checking a
+// connection out per query via pool.query() rather than holding one client
+// for the adapter's whole lifetime, which serializes concurrent requests
+// under Next.js's serverless execution model.
 class PostgreSQLAdapter implements DatabaseAdapter {
-  private pool: Pool | null = null;
-  private client: PoolClient | null = null;
-
-  constructor(connectionString: string) {
-    this.pool = new Pool({ connectionString });
-  }
+  private initialized = false;
 
   async initialize(): Promise<void> {
-    if (this.client) return;
+    if (this.initialized) return;
+    const pool = getPgPool();
 
-    this.client = await this.pool!.connect();
-    
     // Create cards table
-    await this.client.query(`
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS cards (
         id SERIAL PRIMARY KEY,
         text TEXT NOT NULL,
         symbol TEXT NOT NULL,
         category TEXT NOT NULL,
         color TEXT NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       )
     `);
 
     // Migrate databases created before translation_en existed
-    await this.client.query(`ALTER TABLE cards ADD COLUMN IF NOT EXISTS translation_en TEXT`);
+    await pool.query(`ALTER TABLE cards ADD COLUMN IF NOT EXISTS translation_en TEXT`);
 
     // Create indexes
-    await this.client.query(`
+    await pool.query(`
       CREATE INDEX IF NOT EXISTS idx_cards_category ON cards(category);
       CREATE INDEX IF NOT EXISTS idx_cards_text ON cards(text);
     `);
+
+    this.initialized = true;
   }
 
   async getAllCards(): Promise<Card[]> {
-    if (!this.client) throw new Error('Database not initialized');
-    
-    const result = await this.client.query('SELECT * FROM cards ORDER BY created_at DESC');
+    const result = await getPgPool().query('SELECT * FROM cards ORDER BY created_at DESC');
     return result.rows as Card[];
   }
 
   async addCard(card: Omit<Card, 'id' | 'created_at' | 'updated_at'>): Promise<Card> {
-    if (!this.client) throw new Error('Database not initialized');
-
-    const result = await this.client.query(`
+    const result = await getPgPool().query(`
       INSERT INTO cards (text, symbol, category, color, translation_en, created_at, updated_at)
       VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
       RETURNING *
@@ -194,14 +189,12 @@ class PostgreSQLAdapter implements DatabaseAdapter {
   }
 
   async updateCard(id: number, updates: Partial<Omit<Card, 'id' | 'created_at' | 'updated_at'>>): Promise<Card | null> {
-    if (!this.client) throw new Error('Database not initialized');
-
     const existingCard = await this.getCardById(id);
     if (!existingCard) return null;
 
     const updatedCard = { ...existingCard, ...updates };
 
-    const result = await this.client.query(`
+    const result = await getPgPool().query(`
       UPDATE cards
       SET text = $1, symbol = $2, category = $3, color = $4, translation_en = $5, updated_at = CURRENT_TIMESTAMP
       WHERE id = $6
@@ -212,28 +205,18 @@ class PostgreSQLAdapter implements DatabaseAdapter {
   }
 
   async deleteCard(id: number): Promise<boolean> {
-    if (!this.client) throw new Error('Database not initialized');
-    
-    const result = await this.client.query('DELETE FROM cards WHERE id = $1', [id]);
+    const result = await getPgPool().query('DELETE FROM cards WHERE id = $1', [id]);
     return (result.rowCount ?? 0) > 0;
   }
 
   async getCardById(id: number): Promise<Card | null> {
-    if (!this.client) throw new Error('Database not initialized');
-    
-    const result = await this.client.query('SELECT * FROM cards WHERE id = $1', [id]);
-    return result.rows[0] as Card || null;
+    const result = await getPgPool().query('SELECT * FROM cards WHERE id = $1', [id]);
+    return (result.rows[0] as Card) || null;
   }
 
   close(): void {
-    if (this.client) {
-      this.client.release();
-      this.client = null;
-    }
-    if (this.pool) {
-      this.pool.end();
-      this.pool = null;
-    }
+    // No-op — the shared pool (pgPool.ts) outlives any single adapter
+    // instance and is reused by the other database modules too.
   }
 }
 
@@ -320,11 +303,15 @@ class InMemoryAdapter implements DatabaseAdapter {
 
 // Database Factory with fallback
 export function createDatabaseAdapter(): DatabaseAdapter {
-  const databaseUrl = process.env.DATABASE_URL;
-  
-  if (databaseUrl && databaseUrl.startsWith('postgres://')) {
+  // Was `databaseUrl.startsWith('postgres://')` — too strict. Neon (and many
+  // other hosted Postgres providers) issue connection strings starting with
+  // `postgresql://`, which that check silently rejected, falling through to
+  // the in-memory adapter without any error — exactly why cards data has
+  // been resetting on every cold start in production despite this adapter
+  // existing. isPostgresConfigured() just checks presence, not a scheme.
+  if (isPostgresConfigured()) {
     console.log('Using PostgreSQL database');
-    return new PostgreSQLAdapter(databaseUrl);
+    return new PostgreSQLAdapter();
   } else if (process.env.VERCEL) {
     // On Vercel, use in-memory database
     console.log('Using in-memory database (Vercel)');

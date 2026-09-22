@@ -21,7 +21,7 @@ export async function GET() {
   }
 
   try {
-    const locations = getAllLocations();
+    const locations = await getAllLocations();
     return NextResponse.json({ success: true, data: locations });
   } catch (error) {
     console.error('Failed to list locations:', error);
@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
       logo = { data: buffer, mime: logoFile.type };
     }
 
-    const { id } = createLocation({
+    const { id } = await createLocation({
       name,
       instructions,
       contact_name: contactName || null,
@@ -84,10 +84,10 @@ export async function POST(request: NextRequest) {
     // fail the vendor's save; it's recorded so it can be retried later.
     try {
       const faqs = await generateFaqsWithGemini(instructions);
-      saveLocationFaqs(id, faqs, 'ok');
+      await saveLocationFaqs(id, faqs, 'ok');
     } catch (error) {
       console.error('Failed to generate FAQs for new location:', error);
-      saveLocationFaqs(id, [], 'failed');
+      await saveLocationFaqs(id, [], 'failed');
     }
 
     return NextResponse.json({ success: true, data: { id } });

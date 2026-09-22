@@ -64,7 +64,7 @@ export async function requireMobileAuth(
 
   // Confirms the user still exists (e.g. wasn't somehow removed) rather than
   // trusting the token's claims blindly for the rest of the request's life.
-  const user = findUserByEmail(payload.email);
+  const user = await findUserByEmail(payload.email);
   if (!user || user.id !== payload.sub) return null;
 
   return { userId: user.id, email: user.email, role: user.role };

@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'refreshToken is required' }, { status: 400 });
     }
 
-    const valid = findValidRefreshToken(refreshToken);
+    const valid = await findValidRefreshToken(refreshToken);
     if (!valid) {
       return NextResponse.json(
         { success: false, error: 'Refresh token is invalid, expired, or revoked.' },
@@ -23,7 +23,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const user = listUsers().find((u) => u.id === valid.userId);
+    const users = await listUsers();
+    const user = users.find((u) => u.id === valid.userId);
     if (!user) {
       return NextResponse.json({ success: false, error: 'User not found.' }, { status: 401 });
     }

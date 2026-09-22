@@ -54,7 +54,11 @@ export async function GET(request: NextRequest) {
     return failure('unverified_email', failureUrl);
   }
 
-  const user = upsertUserOnLogin(profile.email, profile.name, stateCookie.intent === 'vendor' ? 'vendor' : 'user');
+  const user = await upsertUserOnLogin(
+    profile.email,
+    profile.name,
+    stateCookie.intent === 'vendor' ? 'vendor' : 'user'
+  );
 
   // Mobile handoff: skip the web session cookie entirely — hand back a
   // short-lived one-time code instead. The app exchanges it (with its PKCE
@@ -71,7 +75,7 @@ export async function GET(request: NextRequest) {
   // redirect URI had to be domain-verified in the first place. So: real App
   // Link in production, custom scheme when running against anything else.
   if (stateCookie.client === 'mobile' && stateCookie.codeChallenge) {
-    const authCode = createAuthCode(user.id, stateCookie.codeChallenge);
+    const authCode = await createAuthCode(user.id, stateCookie.codeChallenge);
     const isProductionDomain = new URL(request.url).hostname === 'voxaboard.com';
     const mobileCallbackUrl = isProductionDomain
       ? new URL('/mobile-auth-callback', request.url)

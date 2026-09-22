@@ -5,7 +5,7 @@ import { getLocationLogo } from '@/lib/locationsDatabase';
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
-  const logo = getLocationLogo(id);
+  const logo = await getLocationLogo(id);
   if (!logo) {
     return NextResponse.json({ success: false, error: 'No logo for this location.' }, { status: 404 });
   }

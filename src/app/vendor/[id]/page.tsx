@@ -11,13 +11,13 @@ export default async function LocationDetailPage({ params }: { params: Promise<{
   await requireVendorPage();
   const { id } = await params;
 
-  const location = getLocationById(id);
+  const location = await getLocationById(id);
   if (!location) {
     notFound();
   }
 
-  const summary = getAllLocations().find((entry) => entry.id === id);
-  const faqRecord = getLocationFaqs(id);
+  const summary = (await getAllLocations()).find((entry) => entry.id === id);
+  const faqRecord = await getLocationFaqs(id);
 
   return (
     <div className="min-h-screen bg-gray-50">
