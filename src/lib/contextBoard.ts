@@ -13,7 +13,7 @@
 
 import { Card, ContextBoard, SemanticInterpretation, AACConcept } from '@/types';
 import { findPromotionMatch, validateConcepts } from './promotionMapping';
-import { interpretWithGemini, getMockInterpretation } from './geminiService';
+import { interpretWithGemini, getMockInterpretation, InterpretAuthError } from './geminiService';
 import { mapConceptsToCards, getEssentialCommunicationCards } from './conceptToCard';
 
 export interface ContextBoardResult {
@@ -64,9 +64,24 @@ export async function generateContextBoard(
   } else {
     // Step 2: Call Gemini AI via server-side API (only if library fails)
     console.log('📡 No library match, trying Gemini AI...');
-    
-    interpretation = await interpretWithGemini(phrase, language);
-    
+
+    try {
+      interpretation = await interpretWithGemini(phrase, language);
+    } catch (error) {
+      if (error instanceof InterpretAuthError) {
+        // Distinct from a genuine "couldn't understand the phrase" failure —
+        // falling through to the mock interpreter here would mask the real
+        // cause (not logged in) behind an unrelated generic error message.
+        return {
+          success: false,
+          board: null,
+          error: 'Please log in to use AI Interpret.',
+          source: 'error',
+        };
+      }
+      throw error;
+    }
+
     if (interpretation) {
       console.log('✅ Gemini interpretation successful:', interpretation);
       source = 'gemini';

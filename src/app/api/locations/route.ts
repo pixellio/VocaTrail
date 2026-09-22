@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { createLocation, getAllLocations } from '@/lib/locationsDatabase';
+import { createLocation, getAllLocations, saveLocationFaqs } from '@/lib/locationsDatabase';
+import { generateFaqsWithGemini } from '@/lib/faqGenerationService';
 import { SESSION_COOKIE, getSession, isSuperAdmin } from '@/lib/session';
 
 const MAX_LOGO_BYTES = 2 * 1024 * 1024; // 2MB
@@ -76,6 +77,18 @@ export async function POST(request: NextRequest) {
       contact_phone: contactPhone || null,
       logo,
     });
+
+    // Generate the AAC question list once, at creation time — this is the only
+    // event in the product tied to instructions (there's no separate "generate
+    // QR" step and no instructions-edit flow). A Gemini failure here must not
+    // fail the vendor's save; it's recorded so it can be retried later.
+    try {
+      const faqs = await generateFaqsWithGemini(instructions);
+      saveLocationFaqs(id, faqs, 'ok');
+    } catch (error) {
+      console.error('Failed to generate FAQs for new location:', error);
+      saveLocationFaqs(id, [], 'failed');
+    }
 
     return NextResponse.json({ success: true, data: { id } });
   } catch (error) {

@@ -88,6 +88,16 @@ function validateGeminiResponse(response: unknown): response is GeminiConceptRes
  * @param phrase - The phrase to interpret
  * @returns SemanticInterpretation or null if failed
  */
+// Thrown specifically for a 401 from /api/interpret, so callers can show
+// "please log in" instead of the generic "couldn't interpret this phrase"
+// message that's meant for genuine Gemini/parsing failures.
+export class InterpretAuthError extends Error {
+  constructor() {
+    super('Not authenticated.');
+    this.name = 'InterpretAuthError';
+  }
+}
+
 export async function interpretWithGemini(
   phrase: string,
   language?: string
@@ -102,6 +112,10 @@ export async function interpretWithGemini(
       },
       body: JSON.stringify({ phrase, language })
     });
+
+    if (response.status === 401) {
+      throw new InterpretAuthError();
+    }
 
     const result = await response.json();
 
@@ -130,6 +144,7 @@ export async function interpretWithGemini(
     };
 
   } catch (error) {
+    if (error instanceof InterpretAuthError) throw error;
     console.error('Gemini API call failed:', error);
     return null;
   }

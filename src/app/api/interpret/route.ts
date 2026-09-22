@@ -5,8 +5,10 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import type { AACConcept, GeminiConceptResponse } from '@/types';
 import { getLanguageLabel } from '@/lib/languagePreference';
+import { SESSION_COOKIE, getSession } from '@/lib/session';
 
 // Pick a model that actually exists for this API key.
 // (Verified via /api/list-models output)
@@ -122,6 +124,12 @@ function buildLanguageHint(language: unknown): string {
 }
 
 export async function POST(request: NextRequest) {
+  const cookieStore = await cookies();
+  const session = getSession(cookieStore.get(SESSION_COOKIE)?.value);
+  if (!session) {
+    return NextResponse.json({ success: false, error: 'Not authenticated.' }, { status: 401 });
+  }
+
   try {
     const { phrase, language } = await request.json();
 

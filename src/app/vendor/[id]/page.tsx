@@ -1,9 +1,11 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Pencil } from 'lucide-react';
 import { requireVendorPage } from '@/lib/vendorAuth';
-import { getAllLocations, getLocationById } from '@/lib/locationsDatabase';
+import { getAllLocations, getLocationById, getLocationFaqs } from '@/lib/locationsDatabase';
 import LocationQRCode from '@/components/LocationQRCode';
+import FaqGenerationPanel from '@/components/FaqGenerationPanel';
+import DeleteLocationButton from '@/components/DeleteLocationButton';
 
 export default async function LocationDetailPage({ params }: { params: Promise<{ id: string }> }) {
   await requireVendorPage();
@@ -15,14 +17,27 @@ export default async function LocationDetailPage({ params }: { params: Promise<{
   }
 
   const summary = getAllLocations().find((entry) => entry.id === id);
+  const faqRecord = getLocationFaqs(id);
 
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-2xl mx-auto p-4 py-8">
-        <Link href="/vendor" className="flex items-center gap-1 text-sm text-purple-600 hover:underline mb-4">
-          <ArrowLeft size={16} />
-          Back to dashboard
-        </Link>
+        <div className="flex items-center justify-between mb-4">
+          <Link href="/vendor" className="flex items-center gap-1 text-sm text-purple-600 hover:underline">
+            <ArrowLeft size={16} />
+            Back to dashboard
+          </Link>
+          <div className="flex items-center gap-4">
+            <Link
+              href={`/vendor/${id}/edit`}
+              className="flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-gray-800 hover:underline"
+            >
+              <Pencil size={14} />
+              Edit
+            </Link>
+            <DeleteLocationButton locationId={id} locationName={location.name} />
+          </div>
+        </div>
 
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
           <h1 className="text-2xl font-bold text-gray-800 mb-1">{location.name}</h1>
@@ -40,6 +55,12 @@ export default async function LocationDetailPage({ params }: { params: Promise<{
             </div>
           )}
         </div>
+
+        <FaqGenerationPanel
+          locationId={location.id}
+          initialFaqs={faqRecord?.faqs ?? []}
+          initialStatus={faqRecord?.status ?? 'none'}
+        />
 
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <h2 className="text-lg font-semibold text-gray-800 mb-1">Location QR Code</h2>

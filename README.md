@@ -2,6 +2,22 @@
 
 A modern Augmentative and Alternative Communication (AAC) application built with Next.js, TypeScript, and Tailwind CSS. This app helps individuals with communication difficulties express themselves through visual cards and text-to-speech functionality.
 
+This repo is the web app: the card board itself, plus the vendor/admin side (creating `Location`s, generating their QR codes and FAQ lists). A companion Android app, [Voxaboard Mobile](../SBXDynamics/voxaboard-mobile), scans those QR codes to build an on-device vocabulary board — see that repo's README for its side of the architecture.
+
+## Architecture
+
+### Vendor / location flow
+A vendor creates a `Location` with free-text `instructions` (e.g. "Pay before you consume. No pets are allowed."). At creation time, the server calls **Gemini** once (`src/lib/faqGenerationService.ts`) to turn those instructions into a short list of concrete questions an AAC user might want to ask on-site — not a literal restatement of each rule, but questions inferred from the *topic* each rule raises (Gricean implicature, not extractive question generation): "No pets allowed" generates not just "Can I bring my pet?" but genuinely useful practical follow-ups like "Is a dog walker provided?" and "Are service animals allowed?", while "Please don't spit in the sink" generates "Where can I spit?" rather than mirroring the restriction as a permission question nobody would actually ask. The vendor's location page renders a QR code (just the location's UUID) that the mobile app scans to fetch this list.
+
+### Gemini touchpoints (all server-side; the API key never leaves this server)
+- **FAQ generation** (`src/lib/faqGenerationService.ts`) — once per location, at creation (or on manual regenerate).
+- **Word explanation** (`src/lib/wordExplanationService.ts`, `POST /api/vocabulary/explain`) — on-demand, called by the mobile app only when its own on-device matching finds a genuinely new word with no match on the user's board. Requires a logged-in mobile user (see Auth below) since this is the one endpoint that costs a real API call per request.
+- **`/api/interpret`** — unrelated promotion-phrase decomposition feature, requires a web session.
+
+### Auth: two independent systems
+- **Web session** (`src/lib/session.ts`) — Google OAuth only, no passwords. A stateless HMAC-signed cookie with **no server-side record** — it can expire but can't be revoked before that. Used for the vendor dashboard and `/api/interpret`.
+- **Mobile JWT + refresh token** (`src/lib/mobileAuth.ts`, `src/lib/mobileAuthDatabase.ts`, `src/app/api/auth/mobile/*`) — built specifically for the mobile app, and the first genuinely *revocable* auth in this project. The mobile app hands off to this same Google login in a system browser (PKCE, `client=mobile`), gets a short-lived one-time code back via a verified Android App Link (`public/.well-known/assetlinks.json`) or a custom-scheme fallback for local dev, and exchanges it for a short-lived JWT access token plus a long-lived, revocable refresh token (hashed at rest in its own SQLite file, `data/mobile_auth.db`). Logging out — or an admin revoking a lost device — deletes that refresh-token row, which takes effect on the device's next refresh attempt.
+
 ## Features
 
 ### 🗣️ Communication Cards
@@ -40,8 +56,11 @@ A modern Augmentative and Alternative Communication (AAC) application built with
 - **Tailwind CSS** - Utility-first CSS framework
 - **Lucide React** - Beautiful icon library
 - **Web Speech API** - Built-in text-to-speech functionality
-- **SQLite** - Default server-side database (better-sqlite3)
+- **SQLite** - Default server-side database (better-sqlite3) — separate files per domain: cards, locations, users, and mobile auth
 - **PostgreSQL** - Optional production database with migration support
+- **Google OAuth** - Sign-in for both the vendor dashboard (session cookie) and the mobile app (JWT + refresh token)
+- **`jose`** - JWT signing/verification for the mobile app's access tokens
+- **Gemini API** (`gemini-2.5-flash`) - Location FAQ generation and on-demand word explanations, called server-side only
 
 ## Database Configuration
 
@@ -122,6 +141,22 @@ DATABASE_URL=postgres://username:password@host:port/database
 
 # Vercel automatically uses in-memory database
 # No additional configuration needed
+
+# Gemini API — FAQ generation and word-explanation features (server-side only, never exposed to clients)
+GEMINI_API_KEY=
+
+# Google OAuth — required for both the vendor dashboard and the mobile app's login flow
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+
+# Optional: secret for the web session cookie. Falls back to GOOGLE_CLIENT_SECRET if unset.
+SESSION_SECRET=
+
+# Required for the mobile app's JWT access tokens — keep separate from SESSION_SECRET
+MOBILE_JWT_SECRET=
+
+# Comma-separated Google account emails with super-admin access
+SUPER_ADMIN_EMAILS=
 ```
 
 See [DATABASE_DEPLOYMENT.md](./DATABASE_DEPLOYMENT.md) for detailed deployment information.
