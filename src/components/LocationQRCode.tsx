@@ -31,6 +31,11 @@ export default function LocationQRCode({ locationId, locationName, hasLogo }: Lo
           errorCorrectionLevel: 'H',
           margin: 2,
         });
+        // qrcode pins an inline pixel width/height on the canvas, which stretches
+        // it when the container is narrower than QR_SIZE (max-w-full shrinks only
+        // the width). Drop them so CSS keeps the canvas square at any width.
+        canvas.style.width = '';
+        canvas.style.height = '';
 
         if (hasLogo) {
           const logo = new window.Image();
@@ -92,7 +97,7 @@ export default function LocationQRCode({ locationId, locationName, hasLogo }: Lo
   return (
     <div className="flex flex-col items-center gap-4">
       <div className="relative bg-white p-4 rounded-lg border border-gray-200">
-        <canvas ref={canvasRef} width={QR_SIZE} height={QR_SIZE} className="max-w-full h-auto" />
+        <canvas ref={canvasRef} width={QR_SIZE} height={QR_SIZE} className="max-w-full h-auto aspect-square" />
         {!isReady && !error && (
           <div className="absolute inset-0 flex items-center justify-center bg-white/70">
             <Loader2 size={24} className="animate-spin text-purple-600" />
