@@ -24,7 +24,7 @@ export default function TermsOfServicePage() {
               Augmentative and Alternative Communication (AAC) utility app operated by Pixellio
               (&quot;we,&quot; &quot;us,&quot; or &quot;our&quot;). By accessing or using VoxaBoard,
               you agree to these Terms. If you are using VoxaBoard on behalf of someone else —
-              for example as a parent, guardian, caregiver, or clinician — you agree to these
+              for example as a parent, guardian, caregiver, or teacher — you agree to these
               Terms on that person&apos;s behalf as well.
             </p>
           </section>
@@ -39,13 +39,14 @@ export default function TermsOfServicePage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-gray-800 mb-2">2. Not a substitute for professional care</h2>
+            <h2 className="text-xl font-semibold text-gray-800 mb-2">2. A communication tool, not professional advice</h2>
             <p>
-              VoxaBoard is intended to be used under the guidance of a physician, speech-language
-              pathologist, or other qualified clinician. It does not diagnose, treat, or provide
-              medical advice, and it is not a substitute for professional clinical assessment or
-              care. Any decisions about a user&apos;s communication plan, therapy, or treatment
-              should be made in consultation with a qualified professional.
+              VoxaBoard works best when used with the support of people who know the user well,
+              such as family members, caregivers, teachers, or communication support professionals.
+              It is a tool for everyday communication. It does not diagnose, treat, or provide
+              medical advice, and it is not a substitute for professional guidance. Decisions about
+              a user&apos;s communication needs and goals should be made together with the people
+              who support them and, where appropriate, a qualified professional.
             </p>
           </section>
 

@@ -113,14 +113,13 @@ export default function PrivacyPolicyPage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-gray-800 mb-2">7. Children&apos;s privacy and clinical use</h2>
+            <h2 className="text-xl font-semibold text-gray-800 mb-2">7. Children&apos;s privacy</h2>
             <p>
               VoxaBoard is often used by children and individuals with communication disabilities,
-              typically with the support of a parent, guardian, caregiver, or clinician. We do not
+              typically with the support of a parent, guardian, caregiver, or teacher. We do not
               knowingly use any child&apos;s information for advertising, and we do not sell any
-              user&apos;s information regardless of age. VoxaBoard is a communication tool, not a
-              medical device, and should be used under the guidance of a physician, speech-language
-              pathologist, or other qualified clinician — see our{' '}
+              user&apos;s information regardless of age. VoxaBoard is a communication tool. It does
+              not diagnose, treat, or provide medical advice — see our{' '}
               <Link href="/terms" className="text-blue-600 hover:underline">
                 Terms of Service
               </Link>{' '}

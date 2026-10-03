@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="344 112 431 549" role="img" aria-label="VoxaBoard logo">
+  <title>VoxaBoard</title>
+  <defs>
+    <clipPath id="left"><rect x="300" y="100" width="250" height="580"/></clipPath>
+    <clipPath id="right"><rect x="570" y="100" width="250" height="580"/></clipPath>
+    <!-- cloud outline = outer cloud shape minus the same shape shrunk by the stroke width -->
+    <mask id="cloud" maskUnits="userSpaceOnUse" x="344" y="112" width="431" height="549">
+      <g fill="#fff">
+        <circle cx="478" cy="347" r="66"/>
+        <circle cx="520" cy="278" r="60"/>
+        <circle cx="615" cy="293" r="57"/>
+        <circle cx="640" cy="350" r="66"/>
+        <rect x="478" y="339" width="162" height="73"/>
+      </g>
+      <g fill="#000">
+        <circle cx="478" cy="347" r="50"/>
+        <circle cx="520" cy="278" r="44"/>
+        <circle cx="615" cy="293" r="41"/>
+        <circle cx="640" cy="350" r="50"/>
+        <rect x="478" y="347" width="162" height="49"/>
+        <rect x="505" y="290" width="115" height="106"/>
+      </g>
+    </mask>
+  </defs>
+
+  <!-- pin, split into two halves with a gap down the middle -->
+  <g>
+    <path id="pin" d="M560 660 C470 560 345 450 345 327 A215 215 0 0 1 775 327 C775 450 650 560 560 660 Z" fill="#B95721" clip-path="url(#left)"/>
+    <path d="M560 660 C470 560 345 450 345 327 A215 215 0 0 1 775 327 C775 450 650 560 560 660 Z" fill="#540F41" clip-path="url(#right)"/>
+  </g>
+
+  <!-- speech-bubble cloud -->
+  <rect x="344" y="112" width="431" height="549" fill="#F4F3EE" mask="url(#cloud)"/>
+  <path d="M588 404 L673 470 L648 400" fill="none" stroke="#F4F3EE" stroke-width="16" stroke-linejoin="miter" stroke-miterlimit="10"/>
+</svg>
