@@ -62,6 +62,9 @@ export interface LocationFaqs {
   faqs: LocationFaqQuestion[];
   generatedAt: string;
   status: FaqGenerationStatus;
+  // Language of `faqs[].text`/`keyPhrase` (ISO code, see languagePreference.ts).
+  // Set by the API layer; stored rows are always the English source.
+  language?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -107,6 +110,16 @@ function getSqliteDb(): Database.Database {
     )
   `);
 
+  sqliteDb.exec(`
+    CREATE TABLE IF NOT EXISTS location_faq_translations (
+      location_id TEXT NOT NULL REFERENCES locations(id),
+      language TEXT NOT NULL,
+      faqs_json TEXT NOT NULL,
+      generated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (location_id, language)
+    )
+  `);
+
   return sqliteDb;
 }
 
@@ -140,6 +153,15 @@ async function ensurePgSchema(): Promise<void> {
       faqs_json TEXT NOT NULL,
       generated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
       generation_status TEXT NOT NULL DEFAULT 'pending'
+    )
+  `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS location_faq_translations (
+      location_id TEXT NOT NULL REFERENCES locations(id),
+      language TEXT NOT NULL,
+      faqs_json TEXT NOT NULL,
+      generated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (location_id, language)
     )
   `);
   pgSchemaReady = true;
@@ -381,6 +403,8 @@ export async function saveLocationFaqs(
          generation_status = excluded.generation_status`,
       [locationId, JSON.stringify(faqs), status]
     );
+    // Cached translations belong to the previous English set — drop them.
+    await getPgPool().query(`DELETE FROM location_faq_translations WHERE location_id = $1`, [locationId]);
     return;
   }
 
@@ -398,6 +422,55 @@ export async function saveLocationFaqs(
       faqs_json: JSON.stringify(faqs),
       generation_status: status,
     });
+  getSqliteDb().prepare(`DELETE FROM location_faq_translations WHERE location_id = ?`).run(locationId);
+}
+
+// Cached machine translation of a location's English FAQs, one row per language.
+export async function getLocationFaqTranslation(
+  locationId: string,
+  language: string
+): Promise<LocationFaqQuestion[] | null> {
+  if (isPostgresConfigured()) {
+    await ensurePgSchema();
+    const result = await getPgPool().query(
+      `SELECT faqs_json FROM location_faq_translations WHERE location_id = $1 AND language = $2`,
+      [locationId, language]
+    );
+    const row = result.rows[0] as { faqs_json: string } | undefined;
+    return row ? parseFaqs(row.faqs_json) : null;
+  }
+  const row = getSqliteDb()
+    .prepare(`SELECT faqs_json FROM location_faq_translations WHERE location_id = ? AND language = ?`)
+    .get(locationId, language) as { faqs_json: string } | undefined;
+  return row ? parseFaqs(row.faqs_json) : null;
+}
+
+export async function saveLocationFaqTranslation(
+  locationId: string,
+  language: string,
+  faqs: LocationFaqQuestion[]
+): Promise<void> {
+  if (isPostgresConfigured()) {
+    await ensurePgSchema();
+    await getPgPool().query(
+      `INSERT INTO location_faq_translations (location_id, language, faqs_json, generated_at)
+       VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
+       ON CONFLICT (location_id, language) DO UPDATE SET
+         faqs_json = excluded.faqs_json,
+         generated_at = excluded.generated_at`,
+      [locationId, language, JSON.stringify(faqs)]
+    );
+    return;
+  }
+  getSqliteDb()
+    .prepare(
+      `INSERT INTO location_faq_translations (location_id, language, faqs_json, generated_at)
+       VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+       ON CONFLICT(location_id, language) DO UPDATE SET
+         faqs_json = excluded.faqs_json,
+         generated_at = excluded.generated_at`
+    )
+    .run(locationId, language, JSON.stringify(faqs));
 }
 
 function parseFaqs(faqsJson: string): LocationFaqQuestion[] {
